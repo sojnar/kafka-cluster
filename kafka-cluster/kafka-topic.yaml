@@ -6,7 +6,7 @@ metadata:
     strimzi.io/cluster: my-cluster
   namespace: kafka
 spec:
-  partitions: 3
+  partitions: 2
   replicas: 2
   config:
     retention.ms: 604800000
