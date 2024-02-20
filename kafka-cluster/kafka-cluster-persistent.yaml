@@ -6,7 +6,7 @@ metadata:
 spec:
   kafka:
     version: 3.6.1
-    replicas: 3 #Quantidade de Brokers
+    replicas: 2 #Quantidade de Brokers
     listeners:
       - name: plain
         port: 9092
@@ -23,7 +23,8 @@ spec:
         configuration:
           bootstrap:
             annotations:
-              service.beta.kubernetes.io/oci-load-balancer-shape: "100Mbps"
+              # service.beta.kubernetes.io/oci-load-balancer-shape: "100Mbps"
+              oci.oraclecloud.com/load-balancer-type: "lb"
           brokers: []
     config:
       offsets.topic.replication.factor: 2
@@ -39,7 +40,7 @@ spec:
       volumes:
       - id: 0
         type: persistent-claim
-        size: 1Ti
+        size: 50Gi
         deleteClaim: false
     metricsConfig:
       type: jmxPrometheusExporter
@@ -62,7 +63,7 @@ spec:
     replicas: 1
     storage:
       type: persistent-claim
-      size: 100Gi
+      size: 50Gi
       deleteClaim: false
     metricsConfig:
       type: jmxPrometheusExporter
