@@ -1,3 +1,19 @@
+# Índice
+
+- [Configuração do Kafka com Strimzi no Kubernetes](#configuração-do-kafka-com-strimzi-no-kubernetes)
+  - [Pré-requisitos](#pré-requisitos)
+  - [Baixar os Binários do Kafka e Configurar o PATH](#baixar-os-binários-do-kafka-e-configurar-o-path)
+  - [Criar um Namespace Chamado Kafka](#criar-um-namespace-chamado-kafka)
+  - [Provisionar o Cluster-Operator](#provisionar-o-cluster-operator)
+  - [Aplicar as Configurações de Métricas do Monitoramento](#aplicar-as-configurações-de-métricas-do-monitoramento)
+  - [Provisionar o Cluster Kafka](#provisionar-o-cluster-kafka)
+  - [Criação de Tópicos](#criação-de-tópicos)
+  - [Verificação dos Serviços Criados](#verificação-dos-serviços-criados)
+  - [Uso dos Binários do Kafka para Testes](#uso-dos-binários-do-kafka-para-testes)
+- [Configuração do Prometheus + Grafana](#configuração-do-prometheus--grafana)
+- [Configuração do Loki](#configuração-do-loki)
+
+
 # Configuração do Kafka com Strimzi no Kubernetes
 
 ### Pré-requisitos
@@ -153,4 +169,59 @@ $ kubectl apply -f grafana.yaml
     - strimzi-kafka-exporter.json
 
 
+# Configuração do loki
+- ### Adicionando repositorio helm grafana
+```bash
+$ helm repo add grafana https://grafana.github.io/helm-charts
+```
 
+- ### Listando os repositórios instalados
+```bash
+$ helm repo list
+```
+
+- ### Criando um namespace para o loki
+```bash
+$ kubectl create ns loki
+```
+
+- ### Definindo namespace padrão
+```bash
+$ kubectl config set-context --current --namespace=loki
+```
+
+- ### Instalando loki-stack
+```bash
+$ helm upgrade --install loki grafana/loki-stack -f values.yaml -n loki
+```
+
+- ### Verifique se todos os objetos subiram com sucesso
+```bash
+$ kubectl get all
+```
+
+- ### Ajuste o client.url no daemonset
+```bash
+$ kubectl edit daemonset loki-promtail
+
+    spec:
+      containers:
+      - args:
+        - -config.file=/etc/promtail/promtail.yaml
+        - -client.url=http://loki:3100/loki/api/v1/push
+```
+
+- ### Consulte os logs do pod/loki-promtail
+```bash
+$ kubectl logs -f pod/loki-promtail
+```
+
+- ### Verifique se os logs que o Promtail esta lendo
+```bash
+$ kubectl port-forward pod/loki-promtail-m64r9  8081:3101
+```
+
+- > Acesse no seu navegador a url= http://localhost:8081
+    
+- ### Configure o loki no grafana
+    >datasouce>Add data source>loki > http://loki.loki.svc.cluster.local:3100
