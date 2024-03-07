@@ -161,6 +161,10 @@ $ kubectl get svc -w
 $ kubectl apply -f grafana.yaml
 ```
 
+```bash
+$ kubectl get pvc -n kafka
+```
+
 - ### No browser acesse a url do grafana e configure o datasource
     -  >datasource > config > http://prometheus-operated.kafka.svc.cluster.local:9090
 - ### Importe os templates
