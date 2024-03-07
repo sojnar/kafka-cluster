@@ -43,7 +43,8 @@ spec:
           periodSeconds: 20
       volumes:
       - name: grafana-data
-        emptyDir: {}
+        persistentVolumeClaim:
+          claimName: grafana-pvc
       - name: grafana-logs
         emptyDir: {}
 ---
@@ -53,9 +54,6 @@ metadata:
   name: grafana
   labels:
     app: strimzi
-  annotations:
-    oci.oraclecloud.com/load-balancer-type: "lb"
-    service.beta.kubernetes.io/oci-load-balancer-shape: "10Mbps"
 spec:
   ports:
   - name: grafana
@@ -65,3 +63,14 @@ spec:
   selector:
     name: grafana
   type: LoadBalancer
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: grafana-pvc
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 50Gi
