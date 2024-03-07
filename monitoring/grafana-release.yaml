@@ -4,6 +4,11 @@ metadata:
   name: grafana
   labels:
     app: strimzi
+  annotations:
+    oci.oraclecloud.com/load-balancer-type: "lb"
+    service.beta.kubernetes.io/oci-load-balancer-shape: "flexible"
+    oci.oraclecloud.com/minimum-bandwidth: "10"
+    oci.oraclecloud.com/maximum-bandwidth: "100"
 spec:
   replicas: 1
   selector:
