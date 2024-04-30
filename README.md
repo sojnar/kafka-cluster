@@ -3,13 +3,23 @@
 - [Configuração do Kafka com Strimzi no Kubernetes](#configuração-do-kafka-com-strimzi-no-kubernetes)
   - [Pré-requisitos](#pré-requisitos)
   - [Baixar os Binários do Kafka e Configurar o PATH](#baixar-os-binários-do-kafka-e-configurar-o-path)
-  - [Criar um Namespace Chamado Kafka](#criar-um-namespace-chamado-kafka)
-  - [Provisionar o Cluster-Operator](#provisionar-o-cluster-operator)
-  - [Aplicar as Configurações de Métricas do Monitoramento](#aplicar-as-configurações-de-métricas-do-monitoramento)
-  - [Provisionar o Cluster Kafka](#provisionar-o-cluster-kafka)
-  - [Criação de Tópicos](#criação-de-tópicos)
-  - [Verificação dos Serviços Criados](#verificação-dos-serviços-criados)
-  - [Uso dos Binários do Kafka para Testes](#uso-dos-binários-do-kafka-para-testes)
+- [Ingress Controller](#ingress-controller)
+  - [Criando um Ingress Controller (Nginx)](#criando-um-ingress-controller-nginx)
+  - [Listando o namespace criado](#listando-o-namespace-criado)
+  - [Listando todos os recursos criados no namespaces ingress-nginx](#listando-todos-os-recursos-criados-no-namespaces-ingress-nginx)
+  - [Habilidado o TLS passthrough](#habilidado-o-tls-passthrough)
+- [Cluster-Operator kafka](#cluster-operator-kafka)
+  - [Criando um Namespace chamado Kafka](#criando-um-namespace-chamado-kafka)
+  - [Deployando o Cluster Operator](#deployando-o-cluster-operator)
+  - [Acompanhando os logs do operator](#acompanhando-os-logs-do-operator)
+  - [Aplicando as Configurações de Métricas do Monitoramento](#aplicando-as-configurações-de-métricas-do-monitoramento)
+  - [Consultando o ConfigMap criado](#consultando-o-configmap-criado)
+  - [Provisionando o Cluster Kafka](#provisionando-o-cluster-kafka)
+  - [Acompanhando a criação dos pods](#acompanhando-a-criação-dos-pods)
+  - [Acompanhando a crição dos volumes persistentes](#acompanhando-a-crição-dos-volumes-persistentes)
+- [Criação de Tópicos](#criação-de-tópicos)
+  - [Crie os tópicos necessários para sua aplicação](#crie-os-tópicos-necessários-para-sua-aplicação)
+- [Uso dos Binários do Kafka para Testes](#uso-dos-binários-do-kafka-para-testes)
 - [Configuração do Prometheus + Grafana](#configuração-do-prometheus--grafana)
 - [Configuração do Loki](#configuração-do-loki)
 
@@ -120,7 +130,7 @@ $ kubectl delete pvc/<nome-do-pvc> -n kafka
 ```
 
 ## Criação de Tópicos
-- ### Crie os tópicos necessários para sua aplicação.:
+- ### Crie os tópicos necessários para sua aplicação:
 ```bash
 $ kubectl apply -f kafka-topic.yaml
 ```
