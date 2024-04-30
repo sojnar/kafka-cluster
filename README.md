@@ -28,121 +28,211 @@
 2. Extraia o conteúdo do arquivo baixado em uma pasta de sua escolha.
 3. Adicione o caminho da pasta `bin` dentro da pasta extraída ao seu `PATH` para poder executar os comandos do Kafka diretamente do terminal.
 
-### Criar um Namespace Chamado Kafka
+## Ingress Controller
+- ### Criando um Ingress Controller (Nginx)
+```bash
+$ kubectl apply -f kafka-cluster/ingress-nginx-controller.yaml
+```
 
+- ### Listando o namespace criado
+```bash 
+$ kubectl get namespacess | grep ingress
+```
+
+- ### Listando todos os recursos criados no namespaces ingress-nginx
+```bash
+$ kubectl get all -n ingress-nginx
+```
+
+- ### O suporte Ingress no Strimzi foi adicionado no Strimzi 0.12.0. Ele usa TLS passthrough e foi testado com o controlador NGINX Ingress. Antes de usá-lo, certifique-se de que TLS passthrough esteja habilitada no controlador.
+
+- ### Habilidado o TLS passthrough
+
+```bash
+$ kubectl -n ingress-nginx edit deployment/ingress-nginx-controller
+```
+
+```yaml
+    spec:
+      containers:
+      - args:
+        - /nginx-ingress-controller
+        - --election-id=ingress-nginx-leader
+        - --controller-class=k8s.io/ingress-nginx
+        - --watch-ingress-without-class=true
+        - --configmap=$(POD_NAMESPACE)/ingress-nginx-controller
+        - --tcp-services-configmap=$(POD_NAMESPACE)/tcp-services
+        - --udp-services-configmap=$(POD_NAMESPACE)/udp-services
+        - --validating-webhook=:8443
+        - --validating-webhook-certificate=/usr/local/certificates/cert
+        - --validating-webhook-key=/usr/local/certificates/key
+        - --enable-ssl-passthrough
+        env:
+```
+
+## Cluster-Operator kafka
+
+- ### Criando um Namespace chamado Kafka
 Execute o comando:
 ```bash
 $ kubectl create namespace kafka
 ```
 
-## Provisionar o Cluster-Operator
-### O Cluster-Operator é responsável por gerenciar os recursos do Kafka dentro do Kubernetes.
+- ### Deployando o Cluster Operator
+  * #### O Cluster-Operator é responsável por gerenciar os recursos do Kafka dentro do Kubernetes.
 ```bash
 $ kubectl apply -f strimzi-cluster-operator.yaml
 ```
 
-### Acompanhe os logs do operator:
+- ### Acompanhando os logs do operator:
 ```bash
 $ kubectl logs <nome-do-pod> -n kafka
 ```
 
-### Aplicar as Configurações de Métricas do Monitoramento:
+- ### Aplicando as Configurações de Métricas do Monitoramento:
 ```bash
 $ kubectl apply -f kafka-metrics-configMap.yaml
 ```
 
-### Consulte o ConfigMap criado:
+- ### Consultando o ConfigMap criado:
 ```bash
 $ kubectl get configMap -n kafka
 ```
 
-### Provisionar o Cluster Kafka:
+- ### Provisionando o Cluster Kafka:
 ```bash
 $ kubectl apply -f kafka-cluster-persistent.yaml
 ```
 
-### Acompanhe a criação dos pods:
+- ### Acompanhando a criação dos pods:
 ```bash
 $ kubectl get pod -n kafka -w
 ```
 
-### Acompanhe a crição dos volumes persistentes:
+- ### Acompanhando a crição dos volumes persistentes:
 ```bash
 $ kubectl get pvc -n kafka -w
 ```
 
-### Para deletar um volume persistente:
+- ### Para deletar um volume persistente:
 ```bash
 $ kubectl delete pvc/<nome-do-pvc> -n kafka
 ```
 
 ## Criação de Tópicos
-### Crie os tópicos necessários para sua aplicação.:
+- ### Crie os tópicos necessários para sua aplicação.:
 ```bash
 $ kubectl apply -f kafka-topic.yaml
 ```
 
-### Verifique a configuração do tópico criado:
+- ### Verifique a configuração do tópico criado:
 ```bash
 $ kubectl get KafkaTopic -n kafka
 ```
 
-### Verificação dos Serviços Criados:
+- ### Verificação dos Serviços Criados:
 ```bash
 $ kubectl get svc -n kafka
 ```
 
 ## Uso dos Binários do Kafka para Testes
-### Liste os tópicos disponíveis:
+
+- ### Para Testar o envio e recebimento de mensagens usando o client do Kafka é preciso baixar o crt criado no provisionamento do cluster, para isso precisamos verificar se as secretes foram criadas.
+
+  - ### Verificando as secrets
+  ```bash 
+  $ kubectl get secrets -n kafka
+  NAME                                TYPE     DATA   AGE
+  my-cluster-cluster-ca-cert          Opaque   3      18d
+  ```
+
+  - ### Verificando se a chave foi criada corretamante, o resultado deve ser semelhante ao exemplo abaixo, o CN deve ser igual o nome do seu cluster.
+  ```bash
+  $ openssl s_client -connect  -servername kafka-bootstrap.pmrun.com.br -showcerts | grep CN
+
+  depth=1 O = io.strimzi, CN = cluster-ca v0
+  verify error:num=19:self-signed certificate in certificate chain
+  
+  depth=1 O = io.strimzi, CN = cluster-ca v0
+  
+  depth=0 O = io.strimzi, CN = my-cluster-kafka
+  
+  0 s:O = io.strimzi, CN = my-cluster-kafka
+    i:O = io.strimzi, CN = cluster-ca v0
+  1 s:O = io.strimzi, CN = cluster-ca v0
+    i:O = io.strimzi, CN = cluster-ca v0
+  subject=O = io.strimzi, CN = my-cluster-kafka
+  issuer=O = io.strimzi, CN = cluster-ca v0
+  ```
+
+  - ### Baixando o .crt
+  ```bash
+  $ kubectl get secret my-cluster-cluster-ca-cert -o jsonpath='{.data.ca\.crt}' -n kafka | base64 -d > ca.crt
+  ```
+
+  - ### Importando o .crt
+  ```bash
+  $ keytool -import -trustcacerts -alias root \
+    -file ca.crt -keystore truststore.jks -storepass password -noprompt
+  ```
+
+- ### Liste os tópicos disponíveis:
 ```bash
-$ kafka-topics.sh --bootstrap-server <seu-ip-externo-do-broker>:9094 --list
+$ echo -e "security.protocol=SSL\nssl.truststore.location=./truststore.jks\nssl.truststore.password=password" > config.properties
+
+$ kafka-topics.sh --list --bootstrap-server kafka-bootstrap.pmrun.com.br:443 --command-config config.properties
 ```
 
-### Teste o envio de mensagens:
+- ### Teste o envio de mensagens:
 ```bash
-$ kafka-console-producer.sh --broker-list <seu-ip-externo-do-broker>:9094 --topic <nome-do-topico>
+$ kafka-console-producer.sh --broker-list kafka-bootstrap.pmrun.com.br:443 \
+  --producer-property security.protocol=SSL \
+  --producer-property ssl.truststore.password=password \
+  --producer-property ssl.truststore.location=./truststore.jks --topic itss
 ```
 
-### Teste o recebimento de mensagens:
+- ### Teste o recebimento de mensagens:
 ```bash
-$ kafka-console-consumer.sh --bootstrap-server <seu-ip-externo-do-broker>:9094 --topic <nome-do-topico> --from-beginning
+$ kafka-console-consumer.sh --bootstrap-server kafka-bootstrap.pmrun.com.br:443 \
+  --topic itss --from-beginning --consumer-property security.protocol=SSL \
+  --consumer-property ssl.truststore.password=password \
+  --consumer-property ssl.truststore.location=./truststore.jks
 ```
 
-#
-# Configuração do prometheus + grafana
-### Defina o namespace padrao no contexto
+## Configuração do prometheus + grafana
+- ### Defina o namespace padrao no contexto
 ```bash
 $ kubectl config set-context --current --namespace=kafka
 ```
 
-### Instale o prometheus operator
+- ### Instale o prometheus operator
 ```bash
 $ kubectl apply -f prometheus-operator-deployment.yaml 
 ```
 
-- #### Verifique se o prometheus operator foi inicializado
+- ### Verifique se o prometheus operator foi inicializado
 ```bash
 $ kubectl get pods|grep prometheus
 ```
 
-### Crie o additional scrape
+- ### Crie o additional scrape
 ```bash
 $ kubectl create secret generic additional-scrape-configs --from-file=./prometheus-additional.yaml -n kafka
 
 $ kubectl apply -f prometheus-additional.yaml 
 ```
 
-### Crie o pod-monitor
+- ### Crie o pod-monitor
 ```bash
 $ kubectl apply -f strimzi-pod-monitor.yaml
 ```
 
-### Crie as regras do prometheus
+- ### Crie as regras do prometheus
 ```bash
 $ kubectl apply -f prometheus-rules.yaml
 ```
 
-### Inicialize o prometheus
+- ### Inicialize o prometheus
 ```bash
 $ kubectl apply -f prometheus.yaml
 ```
@@ -156,13 +246,18 @@ $ kubectl get pod -w
 $ kubectl get svc -w
 ```
 
-### Inicialize o Grafana
+- ### Inicialize o Grafana
 ```bash
 $ kubectl apply -f grafana.yaml
 ```
 
 ```bash
 $ kubectl get pvc -n kafka
+```
+
+- ### Edite o arquivo ingress-path.yml com a url do seu grafana e crie o recurso
+```bash
+$ kubectl apply -f ingress-path.yml
 ```
 
 - ### No browser acesse a url do grafana e configure o datasource
@@ -173,7 +268,7 @@ $ kubectl get pvc -n kafka
     - strimzi-kafka-exporter.json
 
 
-# Configuração do loki
+## Configuração do loki
 - ### Adicionando repositorio helm grafana
 ```bash
 $ helm repo add grafana https://grafana.github.io/helm-charts
