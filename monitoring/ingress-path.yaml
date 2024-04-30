@@ -1,0 +1,26 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: ingress-grafana
+  namespace: kafka
+  labels:
+    name: ingress
+  #annotations:
+  #  kubernetes.io/ingress.class: nginx
+spec:
+  ingressClassName: nginx
+  tls:
+  - hosts:
+      - <dominino-grafana>
+    secretName: secret-devopsclass-tls
+  rules:
+    - host: <dominio-grafana>
+      http:
+        paths:
+        - path: "/"
+          pathType: Prefix
+          backend:
+            service:
+              name: grafana
+              port: 
+                number: 3000
